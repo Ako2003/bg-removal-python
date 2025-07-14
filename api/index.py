@@ -1,5 +1,6 @@
 from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import StreamingResponse, HTMLResponse
+from fastapi.responses import StreamingResponse
+from mangum import Mangum  # AWS Lambda adapter
 from rembg import remove
 from io import BytesIO
 from PIL import Image
@@ -44,3 +45,5 @@ async def add_background(
     buf.seek(0)
 
     return StreamingResponse(buf, media_type="image/png")
+
+handler = Mangum(app)
