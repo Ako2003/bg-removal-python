@@ -18,7 +18,7 @@ app.add_middleware(
 )
 
 
-@app.post("/remove-bg")
+@app.get("/remove-bg")
 async def remove_bg(file: UploadFile = File(...)):
     contents = await file.read()
     output = remove(contents)
@@ -39,7 +39,7 @@ async def test_local():
     return StreamingResponse(BytesIO(output), media_type="image/png")
 
 
-@app.post("/add-bg")
+@app.get("/add-bg")
 async def add_background(file: UploadFile = File(...)):
     # Load transparent image
     contents = await file.read()
@@ -63,7 +63,7 @@ async def add_background(file: UploadFile = File(...)):
     return StreamingResponse(buf, media_type="image/jpeg")
 
 
-@app.post("/blur-bg")
+@app.get("/blur-bg")
 async def blur_background(file: UploadFile = File(...)):
     # Step 1: Read and open the uploaded image
     contents = await file.read()
