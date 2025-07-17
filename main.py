@@ -1,13 +1,21 @@
 from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import StreamingResponse
-from mangum import Mangum  # AWS Lambda adapter
+from fastapi.responses import StreamingResponse, HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from rembg import remove
 from io import BytesIO
-from PIL import Image
-import uvicorn
+from PIL import Image, ImageFilter  # ✅ Make sure this is here
 import os
 
+
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.post("/remove-bg")
 async def remove_bg(file: UploadFile = File(...)):
@@ -16,39 +24,92 @@ async def remove_bg(file: UploadFile = File(...)):
     return StreamingResponse(BytesIO(output), media_type="image/png")
 
 
-@app.post("/test-local")
-async def test_local(file: UploadFile = File(...)):
-    contents = await file.read()
+@app.get("/test-local", response_class=HTMLResponse)
+async def test_local():
+    image_path = "mae-mu-vbAEHCrvXZ0-unsplash.jpg"
+
+    if not os.path.exists(image_path):
+        return HTMLResponse("<h2>Image not found.</h2>", status_code=404)
+
+    with open(image_path, "rb") as f:
+        contents = f.read()
+
     output = remove(contents)
     return StreamingResponse(BytesIO(output), media_type="image/png")
 
 
 @app.post("/add-bg")
-async def add_background(
-    foreground: UploadFile = File(...),
-    background: UploadFile = File(...)
-):
-    # Read and convert foreground (should have transparency)
-    fg_bytes = await foreground.read()
-    fg_img = Image.open(BytesIO(fg_bytes)).convert("RGBA")
+async def add_background(file: UploadFile = File(...)):
+    # Load transparent image
+    contents = await file.read()
+    transparent_img = Image.open(BytesIO(contents)).convert("RGBA")
 
-    # Read and convert background
-    bg_bytes = await background.read()
-    bg_img = Image.open(BytesIO(bg_bytes)).convert("RGBA")
-    bg_img = bg_img.resize(fg_img.size)
+    # Create white background image
+    background = Image.new("RGBA", transparent_img.size, (255, 255, 255, 255))
 
-    # Composite the images
-    combined = Image.alpha_composite(bg_img, fg_img)
+    # Composite the transparent image over the background
+    combined = Image.alpha_composite(background, transparent_img)
 
-    # Save result to buffer and return
+    # Save to output_image.png
+    output_path = "img/output_image.png"
+    combined.convert("RGB").save(output_path, format="PNG")
+
+    # Also return it as response
     buf = BytesIO()
-    combined.save(buf, format="PNG")
+    combined.convert("RGB").save(buf, format="JPEG")
     buf.seek(0)
 
-    return StreamingResponse(buf, media_type="image/png")
+    return StreamingResponse(buf, media_type="image/jpeg")
 
-handler = Mangum(app)
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+@app.post("/blur-bg")
+async def blur_background(file: UploadFile = File(...)):
+    # Step 1: Read and open the uploaded image
+    contents = await file.read()
+    original_img = Image.open(BytesIO(contents)).convert("RGB")
+
+    # Step 2: Remove background to get foreground with transparency
+    foreground_bytes = remove(contents)
+    foreground = Image.open(BytesIO(foreground_bytes)).convert("RGBA")
+
+    # Step 3: Create blurred version of original image
+    blurred_bg = original_img.filter(ImageFilter.GaussianBlur(radius=15)).convert("RGBA")
+
+    # Step 4: Composite foreground on top of blurred background
+    result = Image.alpha_composite(blurred_bg, foreground)
+
+    # Step 5: Return image
+    buf = BytesIO()
+    result.convert("RGB").save(buf, format="JPEG")
+    buf.seek(0)
+
+    return StreamingResponse(buf, media_type="image/jpeg")
+
+@app.get("/test-blur", response_class=StreamingResponse)
+async def test_blur():
+    image_path = "andrew-milko-LspK43UdFo4-unsplash.jpg"
+
+    if not os.path.exists(image_path):
+        return HTMLResponse("<h2>Image not found.</h2>", status_code=404)
+
+    # Load original image
+    with open(image_path, "rb") as f:
+        contents = f.read()
+    original_img = Image.open(BytesIO(contents)).convert("RGB")
+
+    # Remove background to get transparent foreground
+    foreground_bytes = remove(contents)
+    foreground = Image.open(BytesIO(foreground_bytes)).convert("RGBA")
+
+    # Create blurred background
+    blurred_bg = original_img.filter(ImageFilter.GaussianBlur(radius=15)).convert("RGBA")
+
+    # Composite foreground over blurred background
+    result = Image.alpha_composite(blurred_bg, foreground)
+
+    # Return image
+    buf = BytesIO()
+    result.convert("RGB").save(buf, format="JPEG")
+    buf.seek(0)
+
+    return StreamingResponse(buf, media_type="image/jpeg")
