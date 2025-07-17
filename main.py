@@ -25,18 +25,18 @@ async def remove_bg(file: UploadFile = File(...)):
     return StreamingResponse(BytesIO(output), media_type="image/png")
 
 
-@app.get("/test-local", response_class=HTMLResponse)
-async def test_local():
-    image_path = "mae-mu-vbAEHCrvXZ0-unsplash.jpg"
+# @app.get("/test-local", response_class=HTMLResponse)
+# async def test_local():
+#     image_path = "mae-mu-vbAEHCrvXZ0-unsplash.jpg"
 
-    if not os.path.exists(image_path):
-        return HTMLResponse("<h2>Image not found.</h2>", status_code=404)
+#     if not os.path.exists(image_path):
+#         return HTMLResponse("<h2>Image not found.</h2>", status_code=404)
 
-    with open(image_path, "rb") as f:
-        contents = f.read()
+#     with open(image_path, "rb") as f:
+#         contents = f.read()
 
-    output = remove(contents)
-    return StreamingResponse(BytesIO(output), media_type="image/png")
+#     output = remove(contents)
+#     return StreamingResponse(BytesIO(output), media_type="image/png")
 
 
 @app.post("/add-bg")
@@ -86,31 +86,31 @@ async def blur_background(file: UploadFile = File(...)):
 
     return StreamingResponse(buf, media_type="image/jpeg")
 
-@app.get("/test-blur", response_class=StreamingResponse)
-async def test_blur():
-    image_path = "andrew-milko-LspK43UdFo4-unsplash.jpg"
+# @app.get("/test-blur", response_class=StreamingResponse)
+# async def test_blur():
+#     image_path = "andrew-milko-LspK43UdFo4-unsplash.jpg"
 
-    if not os.path.exists(image_path):
-        return HTMLResponse("<h2>Image not found.</h2>", status_code=404)
+#     if not os.path.exists(image_path):
+#         return HTMLResponse("<h2>Image not found.</h2>", status_code=404)
 
-    # Load original image
-    with open(image_path, "rb") as f:
-        contents = f.read()
-    original_img = Image.open(BytesIO(contents)).convert("RGB")
+#     # Load original image
+#     with open(image_path, "rb") as f:
+#         contents = f.read()
+#     original_img = Image.open(BytesIO(contents)).convert("RGB")
 
-    # Remove background to get transparent foreground
-    foreground_bytes = remove(contents)
-    foreground = Image.open(BytesIO(foreground_bytes)).convert("RGBA")
+#     # Remove background to get transparent foreground
+#     foreground_bytes = remove(contents)
+#     foreground = Image.open(BytesIO(foreground_bytes)).convert("RGBA")
 
-    # Create blurred background
-    blurred_bg = original_img.filter(ImageFilter.GaussianBlur(radius=15)).convert("RGBA")
+#     # Create blurred background
+#     blurred_bg = original_img.filter(ImageFilter.GaussianBlur(radius=15)).convert("RGBA")
 
-    # Composite foreground over blurred background
-    result = Image.alpha_composite(blurred_bg, foreground)
+#     # Composite foreground over blurred background
+#     result = Image.alpha_composite(blurred_bg, foreground)
 
-    # Return image
-    buf = BytesIO()
-    result.convert("RGB").save(buf, format="JPEG")
-    buf.seek(0)
+#     # Return image
+#     buf = BytesIO()
+#     result.convert("RGB").save(buf, format="JPEG")
+#     buf.seek(0)
 
-    return StreamingResponse(buf, media_type="image/jpeg")
+#     return StreamingResponse(buf, media_type="image/jpeg")
