@@ -1,8 +1,4 @@
 fastapi
-mangum
-rembg
-onnxruntime
-numpy
-pillow
 uvicorn
-python-multipart
+rembg
+pillow
